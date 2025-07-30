@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum AppState {
+enum AppState: Equatable {
     case textInput
     case recording
     case processing
@@ -96,8 +96,6 @@ struct MainView: View {
                 Spacer()
             }
             .frame(minWidth: 700, minHeight: 500)
-            .navigationTitle("")
-            .navigationBarHidden(true)
         }
         .alert("Error", isPresented: $viewModel.showingAlert) {
             Button("OK") {

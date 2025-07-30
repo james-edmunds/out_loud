@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum RecordingState {
+enum RecordingState: Equatable {
     case ready
     case recording
     case processing

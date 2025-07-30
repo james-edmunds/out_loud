@@ -56,6 +56,8 @@ class RecordingViewModel: ObservableObject {
     }
     
     deinit {
-        stopDurationTimer()
+        // Clean up timer synchronously
+        durationTimer?.invalidate()
+        durationTimer = nil
     }
 }

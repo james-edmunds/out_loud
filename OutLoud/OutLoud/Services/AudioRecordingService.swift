@@ -29,20 +29,31 @@ enum AudioRecordingError: Error, LocalizedError {
     }
 }
 
-class AudioRecordingService: AudioRecordingServiceProtocol {
+class AudioRecordingService: NSObject, AudioRecordingServiceProtocol {
     private var audioRecorder: AVAudioRecorder?
     private var recordingStartTime: Date?
-    private let audioSession = AVAudioSession.sharedInstance()
     
     var isRecording: Bool {
         return audioRecorder?.isRecording ?? false
     }
     
     func requestMicrophonePermission() async -> Bool {
-        return await withCheckedContinuation { continuation in
-            audioSession.requestRecordPermission { granted in
-                continuation.resume(returning: granted)
+        // On macOS, we check the authorization status
+        let status = AVCaptureDevice.authorizationStatus(for: .audio)
+        
+        switch status {
+        case .authorized:
+            return true
+        case .notDetermined:
+            return await withCheckedContinuation { continuation in
+                AVCaptureDevice.requestAccess(for: .audio) { granted in
+                    continuation.resume(returning: granted)
+                }
             }
+        case .denied, .restricted:
+            return false
+        @unknown default:
+            return false
         }
     }
     
@@ -53,19 +64,11 @@ class AudioRecordingService: AudioRecordingServiceProtocol {
             throw AudioRecordingError.permissionDenied
         }
         
-        // Configure audio session
-        do {
-            try audioSession.setCategory(.playAndRecord, mode: .default)
-            try audioSession.setActive(true)
-        } catch {
-            throw AudioRecordingError.recordingFailed("Failed to configure audio session: \(error.localizedDescription)")
-        }
-        
         // Create recording URL
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let audioFilename = documentsPath.appendingPathComponent("recording_\(Date().timeIntervalSince1970).m4a")
         
-        // Configure recording settings
+        // Configure recording settings for macOS
         let settings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
             AVSampleRateKey: 44100,
@@ -94,12 +97,6 @@ class AudioRecordingService: AudioRecordingServiceProtocol {
         }
         
         recorder.stop()
-        
-        do {
-            try audioSession.setActive(false)
-        } catch {
-            print("Failed to deactivate audio session: \(error)")
-        }
         
         let recordingURL = recorder.url
         audioRecorder = nil

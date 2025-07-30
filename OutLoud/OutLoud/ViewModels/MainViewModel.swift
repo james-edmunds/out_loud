@@ -61,20 +61,29 @@ class MainViewModel: ObservableObject {
         
         Task {
             do {
+                print("🎤 Starting to process recording...")
+                
                 // Transcribe audio
+                print("🔄 Transcribing audio...")
                 let transcribedText = try await speechService.transcribeAudio(from: url)
+                print("✅ Transcription completed: \(transcribedText.prefix(50))...")
+                
                 let confidenceScore = speechService.getConfidenceScore()
+                print("📊 Confidence score: \(confidenceScore)")
                 
                 // Calculate metrics
                 let duration = recordingStartTime?.timeIntervalSinceNow.magnitude ?? 0
                 let wordCount = TextValidator.countWords(in: inputText)
                 let wpm = accuracyAnalyzer.calculateWPM(wordCount: wordCount, duration: duration)
+                print("⏱️ Duration: \(duration)s, WPM: \(wpm)")
                 
                 // Analyze accuracy
+                print("🔍 Analyzing accuracy...")
                 let accuracyResult = accuracyAnalyzer.compareTexts(
                     original: inputText,
                     spoken: transcribedText
                 )
+                print("📈 Accuracy: \(accuracyResult.overallAccuracy)")
                 
                 // Create metrics
                 let metrics = ReadingMetrics(
@@ -89,7 +98,9 @@ class MainViewModel: ObservableObject {
                 )
                 
                 // Calculate game score
+                print("🎮 Calculating game score...")
                 let gameScore = gameEngine.calculateOverallScore(metrics)
+                print("🏆 Overall score: \(gameScore.overallScore)")
                 
                 // Create session
                 let session = ReadingSession(
@@ -102,18 +113,23 @@ class MainViewModel: ObservableObject {
                 
                 // Save the session
                 do {
+                    print("💾 Saving session...")
                     try persistenceService.saveSession(session)
+                    print("✅ Session saved successfully")
                 } catch {
-                    print("Failed to save session: \(error.localizedDescription)")
+                    print("⚠️ Failed to save session: \(error.localizedDescription)")
                     // Continue anyway - don't block the user experience
                 }
                 
+                print("🎯 Updating UI to show results...")
                 await MainActor.run {
                     self.currentSession = session
                     self.appState = .results
                 }
+                print("✅ Processing completed successfully!")
                 
             } catch {
+                print("❌ Error during processing: \(error)")
                 let errorMessage = ErrorHandler.userFriendlyMessage(for: error)
                 let recoverySuggestion = ErrorHandler.recoverySuggestion(for: error)
                 
